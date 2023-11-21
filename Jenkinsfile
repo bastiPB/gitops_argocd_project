@@ -66,10 +66,26 @@ pipeline {
 
                     sh """
                     cat deployment.yml
-                    sed -i 's/${APP_NAME}.*/s${APP_NAME}:${IMAGE_TAG}/g' deployment.yml
+                    sed -i 's/${APP_NAME}.*/${APP_NAME}:${IMAGE_TAG}/g' deployment.yml
                     cat deployment.yml
 
                     """
+                }
+            }
+        }
+        stage('Push the changed deployment.yml to git again'){
+            steps{
+                script{
+
+                   sh """
+                    git config --global user.name "jenkins"
+                    git config --global user.email "jenkins@mahqnet.de"
+                    git add deployment.yml
+                    git commit -m "updated the deployment file"
+                   """ 
+                   withCredentials([gitUsernamePassword(credentialsId: 'github', gitToolName: 'Default')]) {
+                        sh "git push https://github.com/bastiPB/gitops_argocd_project.git main"
+                    }
                 }
             }
         }
