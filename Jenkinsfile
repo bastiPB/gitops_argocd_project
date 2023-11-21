@@ -7,7 +7,7 @@ pipeline {
         DOCKERHUB_USERNAME = "bastipb"
         APP_NAME = "gitops-argo-app"
         IMAGE_TAG = "${BUILD_NUMBER}"
-        IMAGE_NAME = "${DOCKER_USERNAME}" + "/" + "${APP_NAME}"
+        IMAGE_NAME = "${DOCKERHUB_USERNAME}" + "/" + "${APP_NAME}"
         REGISTRY_CREDS = 'dockerhub'
     }
     
@@ -36,6 +36,40 @@ pipeline {
                 script{
 
                     docker_image = docker.build "${IMAGE_NAME}"
+                }
+            }
+        }
+        stage('Push Docker Image to DockerHUB'){
+            steps{
+                script{
+                    
+                    docker.withRegistry('',REGISTRY_CREDS){
+
+                        docker_image.push("$BUILD_NUMBER")
+                        docker_image.push('latest')
+                    }      
+                }
+            }
+        }
+        stage('Delete Docker images'){
+            steps{
+                script{
+
+                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker rmi ${IMAGE_NAME}:latest"
+                }
+            }
+        }
+        stage('Updating k8s deployment file'){
+            steps{
+                script{
+
+                    sh """
+                    cat deployment.yml
+                    sed -i 's/${APP_NAME}.*/s${APP_NAME}:${IMAGE_TAG}/g' deployment.yml
+                    cat deployment.yml
+
+                    """
                 }
             }
         }
